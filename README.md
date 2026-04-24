@@ -7,7 +7,6 @@ This repository implements **grammatical error correction** with two main model 
 
 There is also an **mT5** seq2seq baseline (`train_mt5.py` / `infer_mt5.py`) using `google/mt5-small` by default.
 
-More detail on architectures and metrics: [MODELS_GEC_GECTOR.md](MODELS_GEC_GECTOR.md).
 
 ---
 
