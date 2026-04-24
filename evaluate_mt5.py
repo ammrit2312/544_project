@@ -1,14 +1,11 @@
 import os
 import sys
-
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
 import pandas as pd
 from infer_mt5 import correct
 
-
 def _lcs_length(a, b):
-    m, n = len(a), len(b)
+    m, n = (len(a), len(b))
     prev = [0] * (n + 1)
     for i in range(1, m + 1):
         curr = [0] * (n + 1)
@@ -20,7 +17,6 @@ def _lcs_length(a, b):
         prev = curr
     return prev[n]
 
-
 def compute_f05(predictions, references):
     beta = 0.5
     total_lcs = total_pred = total_ref = 0
@@ -31,37 +27,30 @@ def compute_f05(predictions, references):
         total_lcs += lcs
         total_pred += len(pred_tokens)
         total_ref += len(ref_tokens)
-    precision = total_lcs / (total_pred + 1e-8)
-    recall = total_lcs / (total_ref + 1e-8)
-    f05 = (1 + beta**2) * precision * recall / (beta**2 * precision + recall + 1e-8)
-    return {
-        'precision': round(precision, 4),
-        'recall': round(recall, 4),
-        'f0.5': round(f05, 4),
-    }
+    precision = total_lcs / (total_pred + 1e-08)
+    recall = total_lcs / (total_ref + 1e-08)
+    f05 = (1 + beta ** 2) * precision * recall / (beta ** 2 * precision + recall + 1e-08)
+    return {'precision': round(precision, 4), 'recall': round(recall, 4), 'f0.5': round(f05, 4)}
 
-
-def evaluate(test_csv: str, sample: int = None, lang: str = None):
+def evaluate(test_csv: str, sample: int=None, lang: str=None):
     df = pd.read_csv(test_csv).dropna(subset=['incorrect', 'correct'])
     if lang:
         df = df[df['lang'] == lang]
     if sample:
         df = df.sample(n=min(sample, len(df)), random_state=42)
-    print(f"Evaluating {len(df)} sentences" + (f" [{lang}]" if lang else "") + "...")
+    print(f'Evaluating {len(df)} sentences' + (f' [{lang}]' if lang else '') + '...')
     preds = []
     for i, row in enumerate(df.itertuples()):
         preds.append(correct(str(row.incorrect)))
         if (i + 1) % 50 == 0:
-            print(f"  {i+1}/{len(df)}")
+            print(f'  {i + 1}/{len(df)}')
     scores = compute_f05(preds, df['correct'].tolist())
-    print(f"\nPrecision : {scores['precision']}")
-    print(f"Recall    : {scores['recall']}")
-    print(f"F0.5      : {scores['f0.5']}")
+    print(f'\nPrecision : {scores['precision']}')
+    print(f'Recall    : {scores['recall']}')
+    print(f'F0.5      : {scores['f0.5']}')
     return scores
-
-
 if __name__ == '__main__':
-    print("=== English ===")
+    print('=== English ===')
     evaluate('data/processed/test.csv', sample=200, lang='en')
-    print("\n=== Spanish ===")
+    print('\n=== Spanish ===')
     evaluate('data/processed/test.csv', sample=200, lang='es')
