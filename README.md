@@ -5,7 +5,7 @@ This repository implements **grammatical error correction** with two main model 
 1. **GECToR-style** — predict a discrete **edit label** per source word (`$KEEP`, `$DELETE`, `$REPLACE_*`, `$INSERT_*`), then apply rule-based string edits (optionally multiple passes).
 2. **GECModel (seq2seq)** — **XLM-RoBERTa** encodes the noisy sentence; a **decoder** (custom transformer in `model/`, or an alternate stack in `model2.py`) generates the corrected sentence token by token.
 
-There is also an **mT5** seq2seq baseline (`train_mt5.py` / `infer_mt5.py`) using `google/mt5-small` by default.
+There is also an **mT5** seq2seq baseline (`train_mt5.py` / `infer_mt5.py`) using `google/mt5-small` by default. - this was not implemented and tested.
 
 
 ---
