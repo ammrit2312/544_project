@@ -70,15 +70,6 @@ There are **two** implementations; use the **matching** train and inference stor
   - Uses `infer_gec_ft.correct` on `data/processed/test.csv` (default: samples 200 rows per language block in `__main__`).  
   - **Metric:** token-set overlap F0.5 (see script).
 
-### B. `model2.py` + `train2.py`
-
-- **Train:** `python train2.py`  
-  - Dataset: [dataset2.py](dataset2.py) (optional `lang` prefix on the source during tokenization)  
-  - Model: [model2.py](model2.py)  
-  - Checkpoints: `checkpoints/epoch_*.pt` and `checkpoints/best_model.pt`
-
-- **Infer:** there is no separate `infer_*.py` for this stack. After training, you can call `sample_generate` from `train2` or load `best_model.pt` in a short script that mirrors that function. The training script runs a small **sanity generation** at the end.
-
 ---
 
 ## GECToR
