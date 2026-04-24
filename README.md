@@ -49,13 +49,6 @@ Typical files: `train.csv`, `val.csv`, `test.csv`.
 
    The root [requirements.txt](requirements.txt) uses the PyTorch **CUDA 12.4** wheel index. If you use **CPU-only** or **Apple Silicon**, see the comment block at the top of `requirements.txt` for alternative `pip install torch` commands, then install the remaining packages.
 
-4. **Optional check**
-
-   ```bash
-   python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
-   ```
-
-5. **Create `checkpoints/`** (or let training create it): training scripts save weights there.
 
 ---
 
