@@ -3,7 +3,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pandas as pd
 from gec_metrics import compute_exact_match, compute_f05
-from infer_gec_ft import correct
+from infer_gector import correct
 
 def evaluate(test_csv: str, sample: int=None, lang: str=None):
     df = pd.read_csv(test_csv).dropna(subset=['incorrect', 'correct'])
@@ -26,7 +26,7 @@ def evaluate(test_csv: str, sample: int=None, lang: str=None):
     print(f'Exact match  : {scores['exact_match']}')
     return scores
 if __name__ == '__main__':
-    print('=== English (gec_model_encoder_ft) ===')
+    print('=== English ===')
     evaluate('data/processed/test.csv', sample=200, lang='en')
-    print('\n=== Spanish (gec_model_encoder_ft) ===')
+    print('\n=== Spanish ===')
     evaluate('data/processed/test.csv', sample=200, lang='es')

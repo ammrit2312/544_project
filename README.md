@@ -66,9 +66,9 @@ There are **two** implementations; use the **matching** train and inference stor
 - **Infer:** `python infer_gec_ft.py`  
   - Loads `checkpoints/gec_model_encoder_ft.pt` and runs greedy decoding from the built-in decoder.
 
-- **Evaluate:** `python evaluate_gec_ft.py`  
+- **Evaluate:** `python evaluate_gec_ft.py` or `python evaluate.py` (same as `evaluate_gec_ft` via re-export)  
   - Uses `infer_gec_ft.correct` on `data/processed/test.csv` (default: samples 200 rows per language block in `__main__`).  
-  - **Metric:** token-set overlap F0.5 (see script).
+  - **Metrics:** LCS-based precision, recall, F0.5, and exact string match — shared with [gec_metrics.py](gec_metrics.py) and [evaluate_gector.py](evaluate_gector.py).
 
 ---
 
