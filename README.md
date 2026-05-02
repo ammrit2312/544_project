@@ -1,110 +1,63 @@
-# Grammatical error correction (GEC)
+# Grammar correction (English / Spanish)
 
-This repository implements **grammatical error correction** with two main model families:
+Small playground for fixing grammar using two different ideas: one learns **what edits to apply** to each word, the other **writes the corrected sentence** from scratch. Both read the same CSV files under `data/processed/` once you’ve built them.
 
-1. **GECToR-style** — predict a discrete **edit label** per source word (`$KEEP`, `$DELETE`, `$REPLACE_*`, `$INSERT_*`), then apply rule-based string edits (optionally multiple passes).
-2. **GECModel (seq2seq)** — **XLM-RoBERTa** encodes the noisy sentence; a **decoder** (custom transformer in `model/`, or an alternate stack in `model2.py`) generates the corrected sentence token by token.
+Work from the **repo root** so paths and imports behave. GPU helps but isn’t required (scripts use MPS, CUDA, or CPU when available).
 
-There is also an **mT5** seq2seq baseline (`train_mt5.py` / `infer_mt5.py`) using `google/mt5-small` by default. - this was not implemented and tested.
+## Setup
 
+```bash
+python3 -m venv .venv && source .venv/activate   # Windows: .venv\Scripts\activate
+pip install --upgrade pip
+```
 
----
+Install deps from [`requirements.txt`](requirements.txt) as-is. The first line pulls PyTorch built for **CUDA 12.4**; if that doesn’t match your machine, install a suitable PyTorch build from [pytorch.org](https://pytorch.org/get-started/locally/) first, then install the rest of the packages from the file (everything except the `torch` line).
 
 ## Data
 
-Place processed CSVs under `data/processed/` (paths are hard-coded in the training scripts):
+```bash
+python data_loader.py
+```
 
-| Column       | Meaning                          |
-|-------------|-----------------------------------|
-| `incorrect` | noisy / learner text            |
-| `correct`   | reference correction            |
-| `lang`      | optional; e.g. `en`, `es` for filtered eval |
+This downloads English (`juancavallotti/bea-19-fine-tune`) and Spanish (`juancavallotti/multilingual-gec`), merges them, and writes `train.csv`, `val.csv`, and `test.csv` under `data/processed/` with an `lang` column (`en` / `es`).
 
-Typical files: `train.csv`, `val.csv`, `test.csv`.
+## The two models (plain English)
 
----
+**GECTOR** — A pretrained text encoder scores those actions; decoding just applies the edits, optionally running a few passes until the sentence stops changing.
 
-## Environment setup
+**GECModel** — An encoder reads the input and a decoder generates the corrected text token by token (like a tiny translation model). The pretrained encoder starts frozen in [`train.py`](train.py); only the decoder side learns unless you use other scripts.
 
-1. **Create a virtual environment (recommended)**
+### Train
 
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
+| What | Command |
+|------|---------|
+| GECTOR on **both** languages (all rows in `train.csv`) | `python train_gector.py` |
+| GECTOR **Spanish only** | `python train_gector_es.py` |
+| GECModel on the **merged** CSV | `python train.py` |
 
-   On Windows: `.\.venv\Scripts\activate`
+Optional: `GECTOR_EPOCHS`, `GECTOR_NUM_WORKERS` for training; `GECTOR_MAX_PASSES` affects iterative GECTOR inference.
 
-2. **Upgrade pip**
+### Inference
 
-   ```bash
-   python -m pip install -U pip
-   ```
+- GECTOR (default checkpoints): `python infer_gector.py`
+- GECTOR (Spanish checkpoints from `train_gector_es.py`): `python infer_gector_es.py`
+- GECModel: `python infer.py`
 
-3. **Install dependencies**
+Match checkpoint paths at the top of each script to what you trained.
 
-   ```bash
-   python -m pip install -r requirements.txt
-   ```
+### Evaluation
 
-   The root [requirements.txt](requirements.txt) uses the PyTorch **CUDA 12.4** wheel index. If you use **CPU-only** or **Apple Silicon**, see the comment block at the top of `requirements.txt` for alternative `pip install torch` commands, then install the remaining packages.
+GECTOR: `python evaluate_gector.py` or `python evaluate_gector_es.py`.
 
+For **GECModel** metrics, copy the loop from `evaluate_gector.py` but use `from infer import correct` and [`gec_metrics.py`](gec_metrics.py). [`evaluate_gec_1.py`](evaluate_gec_1.py) currently imports `infer_gector`, so it isn’t scoring `train.py`’s checkpoint unless you change that locally.
 
----
+## Main files
 
-## GECModel (seq2seq)
+- [`data_loader.py`](data_loader.py) — build CSVs from Hugging Face
+- [`dataset.py`](dataset.py) — batches for GECModel training
+- [`train_gector.py`](train_gector.py), [`train_gector_es.py`](train_gector_es.py), [`train.py`](train.py)
+- [`infer_gector.py`](infer_gector.py), [`infer_gector_es.py`](infer_gector_es.py), [`infer.py`](infer.py)
+- [`evaluate_gector.py`](evaluate_gector.py), [`evaluate_gector_es.py`](evaluate_gector_es.py), [`gec_metrics.py`](gec_metrics.py)
+- [`model/gec_model.py`](model/gec_model.py), [`model/decoder.py`](model/decoder.py), [`model/attention.py`](model/attention.py)
 
-There are **two** implementations; use the **matching** train and inference story for each.
-
-### A. `model/` + `train_gec_ft.py`
-
-- **Train:** `python train_gec_ft.py`  
-  - Dataset: [dataset.py](dataset.py)  
-  - Model: [model/gec_model.py](model/gec_model.py)  
-  - Default checkpoint: `checkpoints/gec_model_encoder_ft.pt`
-
-- **Infer:** `python infer_gec_ft.py`  
-  - Loads `checkpoints/gec_model_encoder_ft.pt` and runs greedy decoding from the built-in decoder.
-
-- **Evaluate:** `python evaluate_gec_ft.py` or `python evaluate.py` (same as `evaluate_gec_ft` via re-export)  
-  - Uses `infer_gec_ft.correct` on `data/processed/test.csv` (default: samples 200 rows per language block in `__main__`).  
-  - **Metrics:** LCS-based precision, recall, F0.5, and exact string match — shared with [gec_metrics.py](gec_metrics.py) and [evaluate_gector.py](evaluate_gector.py).
-
----
-
-## GECToR
-
-**Idea:** multi-class classification over a **finite label vocabulary** (frequent edits mined from data, plus `$KEEP` / `$DELETE`). Inference applies predicted labels to words; `GECTOR_MAX_PASSES` (used in the infer script) can repeat until the string stabilizes.
-
-In this tree, **training entry points** call `from train_gector import main` (see [train_gector_es.py](train_gector_es.py)). You need a **`train_gector.py`** module in the project (or on `PYTHONPATH`) that defines `main`, `GECTorModel`, and related symbols. If that file is missing, install or add it before running the GECToR wrappers.
-
-- **Train (wrapper example):** `python train_gector_es.py` — passes checkpoint / label paths and a `lang` filter into `train_gector.main` (see file for defaults).
-
-- **Infer:** `python infer_gector_es.py` — loads checkpoint + label pickle, runs correction.
-
-- **Evaluate:** `python evaluate_gector_es.py` — LCS-based F0.5 and exact match on Spanish rows by default (`lang == 'es'`).
-
-For a **language-agnostic** workflow, use or author a `train_gector.py` that does not filter by `lang`, and point infer/eval scripts at the same artifacts (or duplicate the wrapper without the `es` suffix once the base module exists).
-
----
-
-## mT5 baseline
-
-- **Train:** `python train_mt5.py` — optional env: `MT5_MODEL`, `MT5_BATCH`, `MT5_EPOCHS`, `MT5_LR`. Checkpoint: `checkpoints/mt5_gec.pt`.
-
-- **Infer:** `python infer_mt5.py`
-
-- **Evaluate:** `python evaluate_mt5.py` — LCS-based F0.5 (same family of metric as GECToR eval script).
-
----
-
-## Other utilities
-
-- [data_loader.py](data_loader.py) — Hugging Face `datasets` → train/val/test CSV split (run as script if needed).
-- [attention2.py](attention2.py) — standalone attention/decoder experiment with a `__main__` smoke block.
-
----
-
-## Footnote: `*_es` scripts
-
-Files like `train_gector_es.py`, `infer_gector_es.py`, and `evaluate_gector_es.py` are **thin wrappers** or evaluators focused on Spanish (`lang == 'es'` where applicable). The general flow is the same as the non-suffixed pattern once you use a full `train_gector` stack and shared CSV layout.
+Other `*_gec_ft.py` scripts are alternate experiments.

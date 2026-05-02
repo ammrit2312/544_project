@@ -4,13 +4,13 @@
 #SBATCH --gres=gpu:a40:1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=32G
-#SBATCH --time=48:00:00
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=16G
+#SBATCH --time=24:00:00
 #SBATCH --job-name=gec_train
 #SBATCH --output=train_%j.log
 
-nvidia-smi
-source /home1/aamrit/src/venv/bin/activate
-cd /home1/aamrit/src
+source venv/bin/activate
 srun python3 train.py
+
+
